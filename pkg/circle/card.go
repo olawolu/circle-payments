@@ -39,7 +39,7 @@ type cardData struct {
 
 type createCardResponse struct {
 	Data struct {
-		ID string `json: "id"`
+		ID string `json:"id"`
 	} `json:"data"`
 }
 
@@ -109,7 +109,7 @@ func CreateCardCall(card payments.CardData) (string, error) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("POST", publicKeyURL, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", cardURL, bytes.NewBuffer(body))
 	if err != nil {
 		log.Println(err)
 	}
