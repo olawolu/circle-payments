@@ -33,10 +33,6 @@ type publicKeyResponse struct {
 	} `json:"data"`
 }
 
-type cardData struct {
-	ID string `json:"id"`
-}
-
 type createCardResponse struct {
 	Data struct {
 		ID string `json:"id"`
