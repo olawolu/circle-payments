@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 )
 
-func Encrypt(data CardDetails, key string) string {
+func Encrypt(data interface{}, key string) string {
 	passphrase := []byte(key)
 
 	message, err := json.Marshal(data)
