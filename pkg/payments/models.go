@@ -1,14 +1,37 @@
 package payments
 
+// PaymentRequest sent to cicle's api
+type PaymentRequest struct {
+	PaymentData
+	CardData
+}
+
+// PaymentResponse as returned from cicrle's api
+type PaymentResponse struct {
+	PaymentID  string   `json:"id"`
+	Source     Source   `json:"source"`
+	Amount     Bill     `json:"amount"`
+	Status     string   `json:"status"`
+	CreateDate string   `json:"createDate"`
+	UpdateDate string   `json:"updateDate"`
+	Metadata   MetaData `json:"metadata"`
+}
+
+// 
+// Custom helper types
 type CardData struct {
-	// IdempotencyKey string `json:"idempotencyKey"`
-	// KeyID          string `json:"keyId"`
-	ExpMonth       int32  `json:"expMonth"`
-	ExpYear        int32  `json:"expYear"`
+	ExpiryMonth    int32 `json:"expMonth"`
+	ExpiryYear     int32 `json:"expYear"`
 	CardDetails
 	BillingDetails
 	MetaData
 }
+
+type PaymentData struct {
+	Amount      string `json:"amount"`
+	Description string `json:"description"`
+}
+
 
 type CardDetails struct {
 	CardNumber string `json:"number"`
@@ -16,7 +39,7 @@ type CardDetails struct {
 }
 
 type BillingDetails struct {
-	CardHolderName string `json:"name"`
+	Name string `json:"name"`
 	City           string `json:"city"`
 	Country        string `json:"country"`
 	AddressLine1   string `json:"line1"`
@@ -32,23 +55,12 @@ type MetaData struct {
 	IPAddress   string `json:"ipAddress"`
 }
 
-type PaymentData struct {
-	IdempotencyKey string `json:"idempotencyKey"`
-	KeyID          string `json:"keyId"`
-	Amount         bill   `json:"amount"`
-	Verification   string `json:"verification"`
-	Source         source `json:"source"`
-	Description    string `json:"description"`
-	CardDetails
-	MetaData
+type Source struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
 }
 
-type bill struct {
+type Bill struct {
 	Amount   string `json:"amount"`
 	Currency string `json:"currency"`
-}
-
-type source struct {
-	ID   string `json:"id"` //card-id returned from create card call
-	Type string `json:"type"`
 }

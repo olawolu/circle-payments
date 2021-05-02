@@ -1,0 +1,55 @@
+input BillingDetails {
+	name: String!
+	addressLine1: String!
+	addressLine2: String!
+	city: String!
+	country: String!
+	district: String!
+	postalCode: String!
+}
+
+input MetaData {
+	phoneNumber: String!
+	email: String!
+	sessionID: String!
+	ipAddress: String!
+}
+
+input CardDetails {
+	cardNumber: String!
+	cvv: String!
+}
+
+type PaymentDetails {
+	paymentID: String!
+	cardID: String!
+	email: String!
+	amount: String!
+	currency: String!
+	status: String!
+	createDate: String!
+	updateDate: String!
+}
+
+input CardPayment {
+	amount: String!
+	billingDetails: BillingDetails!
+	expiryMonth: String!
+	expiryYear: String!
+	cardDetails: CardDetails!
+	description: String!
+	metaData: MetaData!
+}
+
+type Query {
+	getPayment(pay_id: String!): PaymentDetails!
+}
+
+type Mutation {
+	createPayment(details: CardPayment!): PaymentDetails!
+}
+
+schema {
+	query: Query
+	mutation: Mutation
+}
