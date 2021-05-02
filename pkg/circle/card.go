@@ -3,11 +3,8 @@ package circle
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/olawolu/circle-payments/pkg/payments"
@@ -21,10 +18,6 @@ var (
 	API_KEY      = "QVBJX0tFWTplOTMyMDRmZDBmNDhjZWNlNzI0NWQ4MTgwYmFkZTQ1YTowYjZhMzcwZGY1ODdlMjhhMWVkNGY0MzBjNjdmNDIyMw=="
 )
 
-// type Data struct {
-// 	KeyID     string `json:"keyId"`
-// 	PublicKey string `json:"publicKey"`
-// }
 
 type publicKeyResponse struct {
 	Data struct {
@@ -34,87 +27,52 @@ type publicKeyResponse struct {
 }
 
 type createCardResponse struct {
-	Data struct {
+	Data []struct {
 		ID string `json:"id"`
 	} `json:"data"`
+	ErrorCode int    `json:"code"`
+	Message   string `json:"message"`
 }
 
 type cardPayload struct {
-	IdempotencyKey string `json:"idempotencyKey"`
-	KeyID          string `json:"keyId"`
-	ExpMonth       int32  `json:"expMonth"`
-	ExpYear        int32  `json:"expYear"`
-	EncryptedData  string `json:"encryptedData"`
-	payments.BillingDetails
-	payments.MetaData
+	IdempotencyKey          string `json:"idempotencyKey"`
+	KeyID                   string `json:"keyId"`
+	ExpMonth                int32  `json:"expMonth"`
+	ExpYear                 int32  `json:"expYear"`
+	EncryptedData           string `json:"encryptedData"`
+	payments.BillingDetails `json:"billingDetails"`
+	payments.MetaData       `json:"metaData"`
 }
 
-func GetPublicKey() (*publicKeyResponse, error) {
-	var data publicKeyResponse
-	client := &http.Client{}
-	bearer := fmt.Sprintf("Bearer %v", API_KEY)
-
-	req, err := http.NewRequest("GET", publicKeyURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", bearer)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		log.Fatal("decode:", err)
-	}
-
-	fmt.Println(&data)
-	return &data, nil
-}
-
-func CreateCardCall(card payments.CardData) (string, error) {
+func (c *ReqClient) CreateCardCall(card payments.CardData) (string, error) {
 	var payload cardPayload
-	var data createCardResponse
+	var response createCardResponse
 
-	client := &http.Client{}
-	bearer := fmt.Sprintf("Bearer %v", API_KEY)
+	// payments.CopyIdenticalFields(card, &payload)
 
-	copyIdenticalFields(card, &payload)
-
-	sensitiveData := card.CardDetails
-
-	key, err := GetPublicKey()
+	err := c.GetPublicKey()
 	if err != nil {
-		log.Println(err)
+		log.Printf("%v: could not get public key", err)
 	}
 	payload.IdempotencyKey = uuid.NewString()
-	payload.KeyID = key.Data.KeyID
-	payload.EncryptedData = payments.Encrypt(sensitiveData, key.Data.PublicKey)
+	payload.KeyID = c.PublicID
+	payload.EncryptedData = payments.Encrypt(card.CardDetails, c.PublicKey)
+	payload.BillingDetails = card.BillingDetails
+	payload.ExpMonth = card.ExpiryMonth
+	payload.ExpYear = card.ExpiryYear
+	payload.MetaData = card.MetaData
 
+	// log.Println("CreateCard payload: ", payload)
 	body, err := json.Marshal(payload)
 	if err != nil {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("POST", cardURL, bytes.NewBuffer(body))
-	if err != nil {
-		log.Println(err)
-	}
-	req.Header.Set("Authorization", bearer)
-	req.Header.Set("Accept", "application/json")
+	log.Println("requestBody: ", string(body))
 
-	resp, err := client.Do(req)
+	resp, err := c.makeRequest("/cards", "POST", bytes.NewBuffer(body))
 	if err != nil {
-		log.Println(err)
+		log.Println("ReqClientCall.CreateCardCall().makeRequest()", err)
 	}
 	defer resp.Body.Close()
 
@@ -122,25 +80,15 @@ func CreateCardCall(card payments.CardData) (string, error) {
 	if err != nil {
 		log.Println(err)
 	}
-
-	err = json.Unmarshal(responseBody, &data)
+	// log.Println("ReqClient.CreateCardCall() response: ", string(responseBody))
+	err = json.Unmarshal(responseBody, &response)
 	if err != nil {
 		log.Fatal("decode:", err)
 	}
-	return data.Data.ID, nil
-}
 
-func copyIdenticalFields(a, b interface{}) {
-	av := reflect.ValueOf(a)
-	bv := reflect.ValueOf(b).Elem()
+	if len(response.Data) != 0 {
+		return response.Data[0].ID, nil
 
-	at := av.Type()
-	for i := 0; i < at.NumField(); i++ {
-		name := at.Field(i).Name
-
-		bf := bv.FieldByName(name)
-		if bf.IsValid() {
-			bf.Set(av.Field(i))
-		}
 	}
+	return response.Message, nil
 }
